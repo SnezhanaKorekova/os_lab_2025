@@ -5,11 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-
 #include <getopt.h>
 
 #include "find_min_max.h"
@@ -24,11 +22,13 @@ int main(int argc, char **argv) {
   while (true) {
     int current_optind = optind ? optind : 1;
 
-    static struct option options[] = {{"seed", required_argument, 0, 0},
-                                      {"array_size", required_argument, 0, 0},
-                                      {"pnum", required_argument, 0, 0},
-                                      {"by_files", no_argument, 0, 'f'},
-                                      {0, 0, 0, 0}};
+    static struct option options[] = {
+        {"seed", required_argument, 0, 0},
+        {"array_size", required_argument, 0, 0},
+        {"pnum", required_argument, 0, 0},
+        {"by_files", no_argument, 0, 'f'},
+        {0, 0, 0, 0}
+    };
 
     int option_index = 0;
     int c = getopt_long(argc, argv, "f", options, &option_index);
@@ -40,34 +40,40 @@ int main(int argc, char **argv) {
         switch (option_index) {
           case 0:
             seed = atoi(optarg);
-            // your code here
-            // error handling
+            // Добавлена валидация seed
+            if (seed <= 0) {
+                printf("seed must be a positive number\n");
+                return 1;
+            }
             break;
           case 1:
             array_size = atoi(optarg);
-            // your code here
-            // error handling
+            // Добавлена валидация array_size
+            if (array_size <= 0) {
+                printf("array_size must be a positive number\n");
+                return 1;
+            }
             break;
           case 2:
             pnum = atoi(optarg);
-            // your code here
-            // error handling
+            // Добавлена валидация pnum
+            if (pnum <= 0) {
+                printf("pnum must be a positive number\n");
+                return 1;
+            }
             break;
           case 3:
             with_files = true;
             break;
-
-          defalut:
+          default:
             printf("Index %d is out of options\n", option_index);
         }
         break;
       case 'f':
         with_files = true;
         break;
-
       case '?':
         break;
-
       default:
         printf("getopt returned character code 0%o?\n", c);
     }
@@ -78,8 +84,8 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  if (seed == -1 || array_size == -1 || pnum == -1) {
-    printf("Usage: %s --seed \"num\" --array_size \"num\" --pnum \"num\" \n",
+  if (seed == -1 || array_size == -1 || pnum == -1) {  // проверка, что все обязательные данные указаны
+    printf("Usage: %s --seed \"num\" --array_size \"num\" --pnum \"num\" [--by_files]\n",
            argv[0]);
     return 1;
   }
@@ -91,6 +97,10 @@ int main(int argc, char **argv) {
   struct timeval start_time;
   gettimeofday(&start_time, NULL);
 
+  // Добавлено вычисление размера части массива для каждого процесса
+  // Это нужно чтобы разделить работу равномерно между процессами
+  int part_size = array_size / pnum;
+  
   for (int i = 0; i < pnum; i++) {
     pid_t child_pid = fork();
     if (child_pid >= 0) {
@@ -99,25 +109,46 @@ int main(int argc, char **argv) {
       if (child_pid == 0) {
         // child process
 
-        // parallel somehow
-
-        if (with_files) {
-          // use files here
-        } else {
-          // use pipe here
+        // Вычисляем границы части массива для текущего процесса
+        unsigned int begin = i * part_size;
+        unsigned int end = (i == pnum - 1) ? array_size : (i + 1) * part_size;
+        // Последний процесс обрабатывает остаток если array_size не делится на pnum
+        
+        // Вызываем функцию поиска min/max для своей части массива
+        struct MinMax local_min_max = GetMinMax(array, begin, end);
+        
+        // Реализация записи результатов в файлы
+        char filename_min[20], filename_max[20];
+        sprintf(filename_min, "min_%d.txt", i);  // файл для минимума
+        sprintf(filename_max, "max_%d.txt", i);  // файл для максимума
+        
+        // Открываем файлы
+        FILE *file_min = fopen(filename_min, "w");
+        FILE *file_max = fopen(filename_max, "w");
+        if (file_min == NULL || file_max == NULL) {
+          printf("Failed to create files\n");
+          exit(1);
         }
-        return 0;
+        
+        // Записываем результаты
+        fprintf(file_min, "%d", local_min_max.min);
+        fprintf(file_max, "%d", local_min_max.max);
+        fclose(file_min);
+        fclose(file_max);
+        
+        free(array);
+        exit(0);  // завершаем дочерний процесс
       }
-
     } else {
       printf("Fork failed!\n");
       return 1;
     }
   }
 
+  // Реализация ожидания завершения всех дочерних процессов
+  // Родительский процесс ждет пока все дети закончат работу
   while (active_child_processes > 0) {
-    // your code here
-
+    wait(NULL);  // ждем завершения любого дочернего процесса
     active_child_processes -= 1;
   }
 
@@ -125,16 +156,34 @@ int main(int argc, char **argv) {
   min_max.min = INT_MAX;
   min_max.max = INT_MIN;
 
+  // Читаем результаты из файлов
   for (int i = 0; i < pnum; i++) {
     int min = INT_MAX;
     int max = INT_MIN;
 
-    if (with_files) {
-      // read from files
-    } else {
-      // read from pipes
+    // Читаем из файлов
+    char filename_min[20], filename_max[20];
+    sprintf(filename_min, "min_%d.txt", i);
+    sprintf(filename_max, "max_%d.txt", i);
+    
+    FILE *file_min = fopen(filename_min, "r");
+    FILE *file_max = fopen(filename_max, "r");
+    if (file_min == NULL || file_max == NULL) {
+      printf("Failed to open result files\n");
+      return 1;
     }
+    
+    // Считываем значения из файлов
+    fscanf(file_min, "%d", &min);
+    fscanf(file_max, "%d", &max);
+    fclose(file_min);
+    fclose(file_max);
+    
+    // Удаляем временные файлы после чтения
+    remove(filename_min);
+    remove(filename_max);
 
+    // Обновляем общие min/max
     if (min < min_max.min) min_max.min = min;
     if (max > min_max.max) min_max.max = max;
   }
