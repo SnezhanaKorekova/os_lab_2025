@@ -1,0 +1,36 @@
+# Makefile для программы параллельного суммирования
+# Задание 6
+
+# Компилятор и флаги
+CC = gcc
+CFLAGS = -I.
+LDFLAGS = -lpthread -Wall -Wextra
+
+# Исходные файлы
+SOURCES = parallel_sum.c sum.c utils.c
+OBJECTS = $(SOURCES:.c=.o)
+HEADERS = sum.h utils.h
+
+# Цели по умолчанию
+all: parallel_sum
+
+# Основная программа
+parallel_sum: $(OBJECTS)
+	$(CC) -o $@ $(OBJECTS) $(LDFLAGS)
+
+# Объектные файлы
+parallel_sum.o: parallel_sum.c $(HEADERS)
+	$(CC) -c $(CFLAGS) $< -o $@
+
+sum.o: sum.c sum.h
+	$(CC) -c $(CFLAGS) $< -o $@
+
+utils.o: utils.c utils.h
+	$(CC) -c $(CFLAGS) $< -o $@
+
+# Очистка
+clean:
+	rm -f parallel_sum $(OBJECTS)
+
+# Указываем, что эти цели не создают файлов
+.PHONY: all clean install help
