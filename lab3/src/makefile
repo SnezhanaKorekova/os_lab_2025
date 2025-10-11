@@ -1,29 +1,43 @@
-CC=gcc
-CFLAGS=-I.
+# Компилятор и флаги
+CC = gcc
+CFLAGS = -I.
+CFLAGS_WARN = -Wall -Wextra -Wpedantic
 
-# Добавляем zombie_demo в цель all
-all : sequential_min_max parallel_min_max run_sequential zombie_demo
+# Цели по умолчанию
+all: parallel_min_max process_memory
 
-sequential_min_max : utils.o find_min_max.o utils.h find_min_max.h
-	$(CC) -o sequential_min_max find_min_max.o utils.o sequential_min_max.c $(CFLAGS)
-
-parallel_min_max : utils.o find_min_max.o utils.h find_min_max.h
+# Задание 1: Параллельный поиск min/max с таймаутом
+parallel_min_max: utils.o find_min_max.o
 	$(CC) -o parallel_min_max utils.o find_min_max.o parallel_min_max.c $(CFLAGS)
 
-# Добавляем цель для run_sequential
-run_sequential : sequential_min_max
-	$(CC) -o run_sequential run_sequential.c $(CFLAGS)
+# Задание 3: Изучение виртуальной памяти
+process_memory:
+	$(CC) -o process_memory process_memory.c $(CFLAGS)
 
-utils.o : utils.h
-	$(CC) -o utils.o -c utils.c $(CFLAGS)
+# Вспомогательные объектные файлы
+utils.o: utils.c utils.h
+	$(CC) -c utils.c -o utils.o $(CFLAGS)
 
-find_min_max.o : utils.h find_min_max.h
-	$(CC) -o find_min_max.o -c find_min_max.c $(CFLAGS)
+find_min_max.o: find_min_max.c find_min_max.h utils.h
+	$(CC) -c find_min_max.c -o find_min_max.o $(CFLAGS)
 
-# программа для демонстрации зомби-процессов
-zombie_demo :
-	$(CC) -o zombie_demo zombie_demo.c $(CFLAGS)
+# Очистка
+clean:
+	rm -f parallel_min_max process_memory *.o
 
-# и обновляем clear
-clean :
-	rm utils.o find_min_max.o sequential_min_max parallel_min_max run_sequential zombie_demo
+# Более тщательная очистка
+distclean: clean
+	rm -f *~ *.bak
+
+# Справка
+help:
+	@echo "Доступные цели:"
+	@echo "  all          - собрать все программы (по умолчанию)"
+	@echo "  parallel_min_max - собрать программу с таймаутом"
+	@echo "  process_memory   - собрать программу изучения памяти"
+	@echo "  clean        - удалить скомпилированные файлы"
+	@echo "  distclean    - полная очистка"
+	@echo "  help         - показать эту справку"
+
+# Указываем, что эти цели не создают файлов
+.PHONY: all clean distclean help
