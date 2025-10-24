@@ -12,38 +12,18 @@
 #include <sys/types.h>
 
 #include "pthread.h"
+#include "lib.h"  // Подключаем нашу библиотеку
 
-struct FactorialArgs {
-  uint64_t begin;
-  uint64_t end;
-  uint64_t mod;
-};
+// Уже не нужно - перенесено в lib.h
+// struct FactorialArgs {
+//   uint64_t begin;
+//   uint64_t end;
+//   uint64_t mod;
+// };
 
-uint64_t MultModulo(uint64_t a, uint64_t b, uint64_t mod) {
-  uint64_t result = 0;
-  a = a % mod;
-  while (b > 0) {
-    if (b % 2 == 1)
-      result = (result + a) % mod;
-    a = (a * 2) % mod;
-    b /= 2;
-  }
-
-  return result % mod;
-}
-
-uint64_t Factorial(const struct FactorialArgs *args) {
-  uint64_t ans = 1;
-
-  // ВЫЧИСЛЕНИЕ ФАКТОРИАЛА ДЛЯ ДИАПАЗОНА
-  for (uint64_t i = args->begin; i <= args->end; i++) {
-    ans = MultModulo(ans, i, args->mod);
-  }
-
-  printf("Факториал от %lu до %lu по модулю %lu = %lu\n", 
-         args->begin, args->end, args->mod, ans);
-  return ans;
-}
+// Уже не нужно - перенесено в lib.c
+// uint64_t MultModulo(uint64_t a, uint64_t b, uint64_t mod) { ... }
+// uint64_t Factorial(const struct FactorialArgs *args) { ... }
 
 void *ThreadFactorial(void *args) {
   struct FactorialArgs *fargs = (struct FactorialArgs *)args;
@@ -192,7 +172,7 @@ int main(int argc, char **argv) {
       for (uint32_t i = 0; i < tnum; i++) {
         uint64_t result = 0;
         pthread_join(threads[i], (void **)&result);
-        total = MultModulo(total, result, mod);
+        total = MultModulo(total, result, mod);  // Используем функцию из библиотеки
       }
 
       printf("Server result: %lu\n", total);

@@ -1,5 +1,5 @@
 # Makefile для ЛР6 - распределенное вычисление факториала
-# Простая версия с комментариями
+# С поддержкой библиотеки общих функций
 
 # Компилятор
 CC = gcc
@@ -10,17 +10,37 @@ CFLAGS = -Wall
 # Флаги линковки: -lpthread для работы с потоками
 LDFLAGS = -lpthread
 
+# Объектные файлы
+LIB_OBJ = lib.o
+CLIENT_OBJ = client.o
+SERVER_OBJ = server.o
+
 # Цель по умолчанию - собирает и клиент и сервер
 all: client server
 
-# Сборка клиента: читает серверы из файла, распределяет работу
-client: client.c
-	$(CC) $(CFLAGS) -o client client.c $(LDFLAGS)
+# Сборка библиотеки
+$(LIB_OBJ): lib.c lib.h
+	$(CC) $(CFLAGS) -c lib.c -o $(LIB_OBJ)
 
-# Сборка сервера: вычисляет факториал для своего диапазона
-server: server.c
-	$(CC) $(CFLAGS) -o server server.c $(LDFLAGS)
+# Сборка клиента с использованием библиотеки
+client: $(CLIENT_OBJ) $(LIB_OBJ)
+	$(CC) $(CFLAGS) -o client $(CLIENT_OBJ) $(LIB_OBJ) $(LDFLAGS)
 
-# Очистка: удаляет скомпилированные программы
+# Сборка сервера с использованием библиотеки
+server: $(SERVER_OBJ) $(LIB_OBJ)
+	$(CC) $(CFLAGS) -o server $(SERVER_OBJ) $(LIB_OBJ) $(LDFLAGS)
+
+# Компиляция клиента
+$(CLIENT_OBJ): client.c lib.h
+	$(CC) $(CFLAGS) -c client.c -o $(CLIENT_OBJ)
+
+# Компиляция сервера
+$(SERVER_OBJ): server.c lib.h
+	$(CC) $(CFLAGS) -c server.c -o $(SERVER_OBJ)
+
+# Очистка: удаляет скомпилированные программы и объектные файлы
 clean:
-	rm -f client server
+	rm -f client server *.o
+
+# Псевдоцель для обозначения файлов, которые не нужно удалять
+.PHONY: all clean

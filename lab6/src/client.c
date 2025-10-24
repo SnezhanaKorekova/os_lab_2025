@@ -13,6 +13,8 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include "lib.h"  // Подключаем нашу библиотеку
+
 struct Server {
   char ip[255];
   int port;
@@ -26,17 +28,8 @@ struct ThreadData {
   uint64_t result;
 };
 
-uint64_t MultModulo(uint64_t a, uint64_t b, uint64_t mod) {
-  uint64_t result = 0;
-  a = a % mod;
-  while (b > 0) {
-    if (b % 2 == 1)
-      result = (result + a) % mod;
-    a = (a * 2) % mod;
-    b /= 2;
-  }
-  return result % mod;
-}
+// Уже не нужно - перенесено в lib.c
+// uint64_t MultModulo(uint64_t a, uint64_t b, uint64_t mod) { ... }
 
 bool ConvertStringToUI64(const char *str, uint64_t *val) {
   char *end = NULL;
@@ -244,7 +237,7 @@ int main(int argc, char **argv) {
   uint64_t total_result = 1;
   for (int i = 0; i < servers_num; i++) {
     pthread_join(threads[i], NULL);
-    total_result = MultModulo(total_result, thread_data[i].result, mod);
+    total_result = MultModulo(total_result, thread_data[i].result, mod);  // Используем функцию из библиотеки
   }
 
   printf("\nFinal result: %lu! mod %lu = %lu\n", k, mod, total_result);
